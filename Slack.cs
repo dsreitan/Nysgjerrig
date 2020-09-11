@@ -158,7 +158,7 @@ namespace Nysgjerrig
 
                     return new Chat{ Question = question};
                 },
-                async () => new Chat{ Question = $"Har det blitt noe <#CRJ7QDS90> i det siste {members.First().Id.ToSlackMention()}? :microphone:"},
+                async () => new Chat{ Question = $"Har det blitt noe {"CRJ7QDS90".ToSlackChannel()} i det siste {members.First().Id.ToSlackMention()}? :microphone:"},
 
                 // QUESTIONS
                 // weather api - it's nice weather here in oslo, how about where you are X?
