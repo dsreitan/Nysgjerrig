@@ -214,12 +214,14 @@ namespace Nysgjerrig
                     var weatherJson = JsonConvert.DeserializeObject<dynamic>(weatherData);
                     if (weatherJson != null)
                     {
-                        question += $" Her på {selectedOffice.Key}-kontoret er det hvertfall {GetWeatherDescription(weatherJson)}";
+                        question += $" Her på {selectedOffice.Key}-kontoret er det {GetWeatherDescription(weatherJson)}";
                     }
 
                     return new Chat{ Question = question};
                 },
 
+                // TODO
+                
                 // REMINDERS
                 // po
                 // cv 
@@ -227,7 +229,6 @@ namespace Nysgjerrig
 
                 // REPLIES - if other replies react, else message
                 // https://api.slack.com/methods/reactions.add
-                // 
             };
         }
 

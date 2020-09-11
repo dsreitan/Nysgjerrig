@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Logging;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -13,18 +14,30 @@ namespace Nysgjerrig
         [FunctionName("Followup")]
         public async Task<IActionResult> Followup([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)] HttpRequest req, ILogger log)
         {
-            log.LogInformation($"Request method={req.Method} https={req.IsHttps} content-type={req.ContentType}");
-
-            var channelMessages = await GetChannelMessages(limit: 1);
-
-            var lastMessage = channelMessages.Last();
-
-            if (lastMessage.User == SlackBotId)
+            try
             {
-                await ReactToMessage(lastMessage.Ts, "question");
-            } else
+                log.LogInformation($"Request method={req.Method} https={req.IsHttps} content-type={req.ContentType}");
+
+                var channelMessages = await GetChannelMessages(limit: 1);
+
+                var lastMessage = channelMessages.Last();
+
+                if (lastMessage.User == SlackBotId)
+                {
+                    await ReactToMessage(lastMessage.Ts, "question");
+                }
+                else
+                {
+                    await ReactToMessage(lastMessage.Ts);
+                }
+
+                return new OkObjectResult(null);
+            }
+            catch (Exception ex)
             {
-                await ReactToMessage(lastMessage.Ts);
+                log.LogInformation($"{ex.Message} \n{ex.StackTrace}");
+
+                throw;
             }
 
             //TODO: Find a way to fetch the previous question to send an appropriate answer/reminder
@@ -43,8 +56,6 @@ namespace Nysgjerrig
             * - if only selected user, send randomized positive response
             * - if other users responded as well, react
             */
-
-            return new OkObjectResult(null);
         }
     }
 }

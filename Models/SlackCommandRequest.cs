@@ -7,10 +7,10 @@ namespace Nysgjerrig.Models
     /// </summary>
     public class SlackCommandRequest
     {
-        public SlackCommandRequest(IFormCollection form, string commandKey = null)
+        public SlackCommandRequest() { }
+        public SlackCommandRequest(IFormCollection form)
         {
             Command = form["command"];
-            CommandValue = Command?.Replace(commandKey, "").Trim();
             Text = form["text"];
             ResponseUrl = form["response_url"];
             TriggerId = form["trigger_id"];
@@ -23,7 +23,6 @@ namespace Nysgjerrig.Models
         }
 
         public string Command { get; set; }
-        public string CommandValue { get; set; }
         public string Text { get; set; }
         public string ResponseUrl { get; set; }
         public string TriggerId { get; set; }

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using Nysgjerrig.Models;
 using System;
 using System.Collections.Generic;
@@ -16,12 +17,12 @@ namespace Nysgjerrig
         [FunctionName("Test")]
         public async Task<IActionResult> Test([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)] HttpRequest req, ILogger log)
         {
-            log.LogInformation($"Request method={req.Method} https={req.IsHttps} content-type={req.ContentType}");
-
-            var commandRequest = new SlackCommandRequest(req.Form, "/teste");
-
             try
             {
+                var commandRequest = new SlackCommandRequest(req.Form);
+
+                log.LogInformation(JsonConvert.SerializeObject(commandRequest));
+
                 var channelMembers = await GetChannelMemberIds();
 
                 var channelMessages = await GetChannelMessages();
@@ -30,7 +31,7 @@ namespace Nysgjerrig
 
                 var lowestMentionCount = mentionHighscores.First().Count;
 
-                var mentionsTable = $"\n\nAntall ganger en bruker er nevnt de siste {MessageLimit} meldingene i {SlackChannelId.ToSlackChannel()}. En av de uthevede radene blir valgt ut neste gang.\n" + string.Join("\n", mentionHighscores.Select(x =>
+                var mentionsTable = $"\n\nAntall mentions siste {MessageLimit} meldinger i {SlackChannelId.ToSlackChannel()} :arrow_down:\n" + string.Join("\n", mentionHighscores.Select(x =>
                 {
                     var row = $"{x.Count:D2}: {x.Id}";
                     if (commandRequest.UserId == x.Id) row = $"_{row}_";
@@ -57,9 +58,9 @@ namespace Nysgjerrig
         {
             var requestedChatText = "";
 
-            if (!string.IsNullOrWhiteSpace(commandRequest.CommandValue))
+            if (!string.IsNullOrWhiteSpace(commandRequest.Text))
             {
-                if (!int.TryParse(commandRequest.CommandValue, out int chatNumber) || chatNumber <= 0)
+                if (!int.TryParse(commandRequest.Text, out int chatNumber) || chatNumber <= 0)
                 {
                     requestedChatText = "\n\nUgyldig verdi på valg av spørsmål.";
                 }
