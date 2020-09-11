@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
@@ -26,13 +26,11 @@ namespace Nysgjerrig
             SlackChannelId = Environment.GetEnvironmentVariable("SlackChannelId");
             SlackBotId = Environment.GetEnvironmentVariable("SlackBotId");
             SlackAccessTokenBot = Environment.GetEnvironmentVariable("SlackAccessTokenBot");
-            EndpointToTrigger = Environment.GetEnvironmentVariable("EndpointToTrigger");
             IncludeBot = bool.TryParse(Environment.GetEnvironmentVariable("IncludeBot"), out bool value) && value;
 
             if (string.IsNullOrWhiteSpace(SlackChannelId)) throw new ArgumentException("***SlackChannelId not set***");
             if (string.IsNullOrWhiteSpace(SlackBotId)) throw new ArgumentException("***SlackBotId not set***");
             if (string.IsNullOrWhiteSpace(SlackAccessTokenBot)) throw new ArgumentException("***SlackAccessTokenBot not set***");
-            if (string.IsNullOrWhiteSpace(EndpointToTrigger)) throw new ArgumentException("***EndpointToTrigger not set***");
 
             HttpClient = new HttpClient { BaseAddress = new Uri(SlackBaseUrl) };
             HttpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", SlackAccessTokenBot);
@@ -42,17 +40,8 @@ namespace Nysgjerrig
         public string SlackChannelId { get; set; }
         public string SlackBotId { get; set; }
         public string SlackAccessTokenBot { get; set; }
-        public string EndpointToTrigger { get; set; }
         public bool IncludeBot { get; set; }
         public HttpClient HttpClient { get; set; }
-
-        [FunctionName("TimeTrigger")]
-        public void TimeTrigger([TimerTrigger("0 0 11 * * 1-5")] TimerInfo myTimer, ILogger log)
-        {
-            log.LogInformation($"Time trigger fired: {DateTime.Now}");
-
-            HttpClient.GetAsync(EndpointToTrigger);
-        }
 
         [FunctionName("Test")]
         public async Task<IActionResult> Test([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)] HttpRequest req, ILogger log)
