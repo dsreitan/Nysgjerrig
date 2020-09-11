@@ -15,9 +15,6 @@ namespace Nysgjerrig
         [FunctionName("Next")]
         public async Task<IActionResult> Next([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)] HttpRequest req, ILogger log)
         {
-            //TODO: check if question already is sent this day to this user, return error string if so
-            // add force-send-option
-
             log.LogInformation($"Request method={req.Method} https={req.IsHttps} content-type={req.ContentType}");
 
             var commandRequest = new SlackCommandRequest(req.Form, "/neste");
@@ -25,6 +22,12 @@ namespace Nysgjerrig
             var channelMembers = await GetChannelMemberIds();
 
             var channelMessages = await GetChannelMessages();
+
+            // Forwarding spam prevention
+            if (!string.IsNullOrWhiteSpace(commandRequest.UserName) && channelMessages.LastOrDefault(x => x.Text.Contains(commandRequest.UserName)) != null)
+            {
+                return new OkObjectResult("Du kan ikke sende den videre flere ganger på rad :facepalm:");
+            }
 
             var mentionHighscores = GetMentionHighscores(channelMembers, channelMessages);
 
