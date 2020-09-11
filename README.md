@@ -1,6 +1,6 @@
 # Nysgjerrigbotten
 
-Azure Function som spør om hverdagen til folk via Slackmeldinger. 
+Azure Function som spør om hverdagen til folk via Slack-meldinger. 
 
 1. Endre tidspunktene for når botten spør via Cron-jobben: `[TimerTrigger("0 0 11 * * 1-5")]`. [Hjelp til å finne riktig syntax](https://bradymholt.github.io/cron-expression-descriptor/?locale=en-US&expression=0+0+11+*+*+1-5).
 
@@ -11,8 +11,9 @@ Azure Function som spør om hverdagen til folk via Slackmeldinger.
   "Values": {
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
     "FUNCTIONS_WORKER_RUNTIME": "dotnet",
-    "EndpointToTrigger": "https://####.azurewebsites.net/api/Next",
-    "IncludeBot": "False",
+    "IncludeBot": false,
+    "QueryNextPersonEndpoint": "https://####.azurewebsites.net/api/Next",
+    "SlackBaseUrl": "https://slack.com/api",
     "SlackChannelId": "G01195YMUE9",
     "SlackBotId": "UGHP7FKBP",
     "SlackAccessTokenBot": "xoxb-####"

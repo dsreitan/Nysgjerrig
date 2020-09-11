@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using Microsoft.Toolkit.Parsers.Rss;
+using Newtonsoft.Json;
 using Nysgjerrig.Models;
 using System;
 using System.Collections.Generic;
@@ -13,6 +14,7 @@ namespace Nysgjerrig
 {
     class SlackBase
     {
+        internal const int MessageLimit = 100;
         internal readonly string SlackBaseUrl;
         internal readonly string SlackChannelId;
         internal readonly string SlackBotId;
@@ -23,7 +25,7 @@ namespace Nysgjerrig
         internal SlackBase()
         {
             SlackBaseUrl = Environment.GetEnvironmentVariable("SlackBaseUrl");
-            SlackChannelId = Environment.GetEnvironmentVariable("SlackChannelId");
+            SlackChannelId = Environment.GetEnvironmentVariable("SlackChannelIdTest");
             SlackBotId = Environment.GetEnvironmentVariable("SlackBotId");
             SlackAccessTokenBot = Environment.GetEnvironmentVariable("SlackAccessTokenBot");
             IncludeBot = bool.TryParse(Environment.GetEnvironmentVariable("IncludeBot"), out bool value) && value;
@@ -37,14 +39,15 @@ namespace Nysgjerrig
             HttpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", SlackAccessTokenBot);
         }
 
-        internal IEnumerable<ChatMember> GetMentionHighscores(IEnumerable<string> channelMembers, IEnumerable<SlackMessage> channelMessages)
+        internal List<ChatMember> GetMentionHighscores(IEnumerable<string> channelMembers, IEnumerable<SlackMessage> channelMessages)
         {
             var allMessagesJoined = string.Join(null, channelMessages.Select(x => x.Text));
 
             return channelMembers
                 .Select(x => new ChatMember { Id = x, Count = Regex.Matches(allMessagesJoined, x).Count })
                 .OrderBy(x => x.Count)
-                .ThenBy(x => Guid.NewGuid());
+                .ThenBy(x => Guid.NewGuid())
+                .ToList();
         }
 
         /// <summary>
@@ -70,17 +73,20 @@ namespace Nysgjerrig
         /// <summary>
         /// https://api.slack.com/methods/chat.postMessage
         /// </summary>
-        internal async Task SendMessage(Chat chat)
+        internal async Task SendMessage(Chat chat, SlackCommandRequest commandRequest)
         {
             var token = SlackAccessTokenBot;
             var channel = SlackChannelId;
             var text = chat.Question;
+            if (!string.IsNullOrWhiteSpace(commandRequest.UserName))
+            {
+                text = $"{text}\n(videresendt fra {commandRequest.UserName} :incoming_envelope:)";
+            }
 
             var json = JsonConvert.SerializeObject(new { token, channel, text });
             var data = new StringContent(json, Encoding.UTF8, "application/json");
 
             var response = await HttpClient.PostAsync($"{SlackBaseUrl}/chat.postMessage", data);
-
             if (!response.IsSuccessStatusCode)
             {
                 throw new Exception($"chat.postMessage failed: {response.StatusCode} {response.ReasonPhrase}");
@@ -93,23 +99,86 @@ namespace Nysgjerrig
         internal async Task<IEnumerable<string>> GetChannelMemberIds()
         {
             var channelMembersResponse = await HttpClient.GetAsync($"{SlackBaseUrl}/conversations.members?token={SlackAccessTokenBot}&channel={SlackChannelId}");
-            if (!channelMembersResponse.IsSuccessStatusCode) throw new Exception($"conversations.members failed: {channelMembersResponse.StatusCode} {channelMembersResponse.ReasonPhrase}");
+            if (!channelMembersResponse.IsSuccessStatusCode)
+            {
+                throw new Exception($"conversations.members failed: {channelMembersResponse.StatusCode} {channelMembersResponse.ReasonPhrase}");
+            }
 
             var channelMembersData = await channelMembersResponse.Content.ReadAsAsync<SlackChannelMembersData>();
-            if (channelMembersData?.Ok != true || channelMembersData.Members?.Any() != true) throw new Exception($"conversations.members failed in channel {SlackChannelId}");
 
-            return channelMembersData.Members.Where(x => IncludeBot || x != SlackBotId);
+            return channelMembersData.Ok ? channelMembersData.Members.Where(x => IncludeBot || x != SlackBotId) : null;
         }
 
         /// <summary>
         /// https://api.slack.com/methods/conversations.history
         /// </summary>
-        internal async Task<IEnumerable<SlackMessage>> GetChannelMessages(int limit = 100)
+        internal async Task<IEnumerable<SlackMessage>> GetChannelMessages(int limit = MessageLimit)
         {
             var channelHistoryResponse = await HttpClient.GetAsync($"{SlackBaseUrl}/conversations.history?token={SlackAccessTokenBot}&channel={SlackChannelId}&limit={limit}");
             var channelHistoryData = await channelHistoryResponse.Content.ReadAsAsync<SlackChannelHistoryData>();
 
             return channelHistoryData.Ok ? channelHistoryData.Messages : null;
+        }
+
+        internal List<Func<Task<Chat>>> GetChats(List<ChatMember> members, SlackCommandRequest commandRequest)
+        {
+            return new List<Func<Task<Chat>>>
+            {
+                async () => new Chat {
+                    Question = $"Hei {members.First().Id.ToSlackMention()}! Hva jobber du med i dag? 🖨",
+                    Reminder = "Eller har du fri?"
+                },
+                async () => new Chat{ Question = $"God dag {members.First().Id.ToSlackMention()}! Gjør du noe gøy akkurat nå? :ninja:"},
+                async () => new Chat{ Question = $"Hallo {members.First().Id.ToSlackMention()}! Hva skjer? :what: :up:"},
+                async () =>
+                {
+                    var mostMentionedUser = await GetSlackUserInfo(members.Last().Id);//await GetSlackUserProfile(members.Last().Id); Can't get profile for some reason..
+                    string mostMentionedUserName;
+                    if (string.IsNullOrWhiteSpace(mostMentionedUser?.Name))
+                    {
+                        mostMentionedUserName = members.Last().Id.ToSlackMention();
+                    }
+                    else
+                    {
+                        var capitalized = mostMentionedUser.Name.First().ToString().ToUpper() + mostMentionedUser.Name.Substring(1);
+                        mostMentionedUserName = capitalized.Contains(".") ? capitalized.Split(".")[0] : capitalized;
+                    }
+
+                    var leastMentionedUserId = members.First().Id;
+
+                    return new Chat{ Question = $"Nå har det vært mye fra {mostMentionedUserName} her! Jeg vil heller høre hva du driver med {leastMentionedUserId.ToSlackMention()} ☺"};
+                },
+                async () =>
+                {
+                    var question = $"Kjeder du deg {members.First().Id.ToSlackMention()}?";
+                    var feed = await HttpClient.GetStringAsync("https://www.kode24.no/?lab_viewport=rss");
+                    if (feed != null)
+                    {
+                        var parser = new RssParser();
+                        var rss = parser.Parse(feed);
+                        var latestPostUrl = rss.First()?.FeedUrl?.Replace("\n", "").Trim();
+                        if (latestPostUrl != null)
+                        {
+                            question += $" Sjekk ut {latestPostUrl.ToSlackUrl("siste nytt på kode24")}!";
+                        }
+                    }
+
+                    return new Chat{ Question = question};
+                },
+                async () => new Chat{ Question = $"Har det blitt noe {"CRJ7QDS90".ToSlackChannel()} i det siste {members.First().Id.ToSlackMention()}? :microphone:"},
+
+                // QUESTIONS
+                // weather api - it's nice weather here in oslo, how about where you are X?
+
+                // REMINDERS
+                // po
+                // cv 
+                // forecast + navn
+
+                // REPLIES - if other replies react, else message
+                // https://api.slack.com/methods/reactions.add
+                // 
+            };
         }
     }
 }
