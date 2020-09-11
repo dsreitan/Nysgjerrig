@@ -191,9 +191,7 @@ namespace Nysgjerrig
                     var weatherJson = JsonConvert.DeserializeObject<dynamic>(weatherData);
                     if (weatherJson != null)
                     {
-                        var props = weatherJson.properties;
-
-                        question += $" Her på {selectedOffice.Key}-kontoret er det hvertfall {GetWeatherResponse(weatherJson)}";
+                        question += $" Her på {selectedOffice.Key}-kontoret er det hvertfall {GetWeatherDescription(weatherJson)}";
                     }
 
                     return new Chat{ Question = question};
@@ -210,10 +208,24 @@ namespace Nysgjerrig
             };
         }
 
-        private string GetWeatherResponse(dynamic weatherJson)
+        /// <summary>
+        /// https://api.met.no/weatherapi/locationforecast/2.0/compact.json
+        /// </summary>
+        private string GetWeatherDescription(dynamic weatherJson)
         {
-            //TODO: Use weather data https://api.met.no/weatherapi/locationforecast/2.0/compact.json?lat=60.33045&lon=11.26161
-            return ":sun:";
+            var timeseriesNow = weatherJson.properties.timeseries[2];
+            var tempereature = timeseriesNow.data.instant.details.air_temperature;
+            var symbolCode = $"{timeseriesNow.data.next_1_hours.summary.symbol_code}";
+            
+            return $"{tempereature} grader og {GetWeatherEmoji(symbolCode)}";
+        }
+
+        private string GetWeatherEmoji(string symbolCode)
+        {
+            if (symbolCode.Contains("rain")) return ":rain_cloud:";
+            if (symbolCode.Contains("sun")) return ":sunny:";
+            if (symbolCode.Contains("cloud")) return ":cloud:";
+            return ":partly_sunny:";
         }
     }
 }
