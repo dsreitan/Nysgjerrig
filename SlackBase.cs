@@ -120,7 +120,30 @@ namespace Nysgjerrig
             return channelHistoryData.Ok ? channelHistoryData.Messages : null;
         }
 
-        internal List<Func<Task<Chat>>> GetChats(List<ChatMember> members, SlackCommandRequest commandRequest)
+        /// <summary>
+        /// https://api.slack.com/methods/reactions.add
+        /// </summary>
+        internal async Task<bool> ReactToMessage(string timestamp, string name = "thumbsup")
+        {
+            var token = SlackAccessTokenBot;
+            var channel = SlackChannelId;
+
+            var json = JsonConvert.SerializeObject(new { token, channel, name, timestamp });
+            var data = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var response = await HttpClient.PostAsync($"{SlackBaseUrl}/reactions.add", data);
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new Exception($"reactions.add failed: {response.StatusCode} {response.ReasonPhrase}");
+            }
+
+            var responseContent = await response.Content.ReadAsStringAsync();
+            var contentJson = JsonConvert.DeserializeObject<dynamic>(responseContent);
+
+            return bool.TryParse($"{contentJson.ok}", out bool isOk) && isOk;
+        }
+
+        internal List<Func<Task<Chat>>> GetChats(List<ChatMember> members, SlackCommandRequest commandRequest = null)
         {
             return new List<Func<Task<Chat>>>
             {
@@ -216,7 +239,7 @@ namespace Nysgjerrig
             var timeseriesNow = weatherJson.properties.timeseries[2];
             var tempereature = timeseriesNow.data.instant.details.air_temperature;
             var symbolCode = $"{timeseriesNow.data.next_1_hours.summary.symbol_code}";
-            
+
             return $"{tempereature} grader og {GetWeatherEmoji(symbolCode)}";
         }
 

@@ -18,7 +18,7 @@ namespace Nysgjerrig
         {
             log.LogInformation($"Request method={req.Method} https={req.IsHttps} content-type={req.ContentType}");
 
-            var commandRequest = new SlackCommandRequest(req.Form);
+            var commandRequest = new SlackCommandRequest(req.Form, "/teste");
 
             try
             {

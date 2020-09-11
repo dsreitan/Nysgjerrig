@@ -7,7 +7,7 @@ namespace Nysgjerrig.Models
     /// </summary>
     public class SlackCommandRequest
     {
-        public SlackCommandRequest(IFormCollection form, string commandKey = "/teste")
+        public SlackCommandRequest(IFormCollection form, string commandKey = null)
         {
             Command = form["command"];
             CommandValue = Command?.Replace(commandKey, "").Trim();
