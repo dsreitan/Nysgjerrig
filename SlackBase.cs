@@ -128,11 +128,11 @@ namespace Nysgjerrig
                     Question = $"Hei {members.First().Id.ToSlackMention()}! Hva jobber du med i dag? 🖨",
                     Reminder = "Eller har du fri?"
                 },
-                async () => new Chat{ Question = $"God dag {members.First().Id.ToSlackMention()}! Gjør du noe gøy akkurat nå? :ninja:"},
+                async () => new Chat{ Question = $"God dag {members.First().Id.ToSlackMention()}! Gjør du noe gøy akkurat nå? :bowling:"},
                 async () => new Chat{ Question = $"Hallo {members.First().Id.ToSlackMention()}! Hva skjer? :what: :up:"},
                 async () =>
                 {
-                    var mostMentionedUser = await GetSlackUserInfo(members.Last().Id);//await GetSlackUserProfile(members.Last().Id); Can't get profile for some reason..
+                    var mostMentionedUser = await GetSlackUserInfo(members.Last().Id);
                     string mostMentionedUserName;
                     if (string.IsNullOrWhiteSpace(mostMentionedUser?.Name))
                     {
@@ -166,9 +166,38 @@ namespace Nysgjerrig
                     return new Chat{ Question = question};
                 },
                 async () => new Chat{ Question = $"Har det blitt noe {"CRJ7QDS90".ToSlackChannel()} i det siste {members.First().Id.ToSlackMention()}? :microphone:"},
+                async () =>
+                {
+                    var question = $"Er det fint vær hos deg {members.First().Id.ToSlackMention()}?";
 
-                // QUESTIONS
-                // weather api - it's nice weather here in oslo, how about where you are X?
+                    var officeLocations = new Dictionary<string, string>
+                    {
+                        {"Oslo", "lat=59.91273&lon=10.74609" },
+                        {"Eidsvoll", "lat=60.33045&lon=11.26161" },
+                        {"Ulsteinvik", "lat=62.34316&lon=5.84867" },
+                        {"Karmøy", "lat=59.28354&lon=5.30671" },
+                        {"København", "lat=55.67594&lon=12.56553" },
+                        {"Trysil", "lat=61.31485&lon=12.2637" },
+                    };
+
+                    var selectedOffice = officeLocations.ElementAt(new Random().Next(0, officeLocations.Count));
+
+                    using var client = new HttpClient();
+                    client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("min-slack-integrasjon", "0.0.1"));
+
+                    var url = "https://api.met.no/weatherapi/locationforecast/2.0/compact.json?" + selectedOffice.Value;
+                    var weatherResponse = await client.GetAsync(url);
+                    var weatherData = await weatherResponse.Content.ReadAsStringAsync();
+                    var weatherJson = JsonConvert.DeserializeObject<dynamic>(weatherData);
+                    if (weatherJson != null)
+                    {
+                        var props = weatherJson.properties;
+
+                        question += $" Her på {selectedOffice.Key}-kontoret er det hvertfall {GetWeatherResponse(weatherJson)}";
+                    }
+
+                    return new Chat{ Question = question};
+                },
 
                 // REMINDERS
                 // po
@@ -179,6 +208,12 @@ namespace Nysgjerrig
                 // https://api.slack.com/methods/reactions.add
                 // 
             };
+        }
+
+        private string GetWeatherResponse(dynamic weatherJson)
+        {
+            //TODO: Use weather data https://api.met.no/weatherapi/locationforecast/2.0/compact.json?lat=60.33045&lon=11.26161
+            return ":sun:";
         }
     }
 }
