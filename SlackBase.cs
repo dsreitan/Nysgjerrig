@@ -25,7 +25,7 @@ namespace Nysgjerrig
         internal SlackBase()
         {
             SlackBaseUrl = Environment.GetEnvironmentVariable("SlackBaseUrl");
-            SlackChannelId = Environment.GetEnvironmentVariable("SlackChannelIdTest");
+            SlackChannelId = Environment.GetEnvironmentVariable("SlackChannelId");
             SlackBotId = Environment.GetEnvironmentVariable("SlackBotId");
             SlackAccessTokenBot = Environment.GetEnvironmentVariable("SlackAccessTokenBot");
             IncludeBot = bool.TryParse(Environment.GetEnvironmentVariable("IncludeBot"), out bool value) && value;
@@ -147,11 +147,14 @@ namespace Nysgjerrig
         {
             return new List<Func<Task<Chat>>>
             {
-                async () => new Chat {
-                    Question = $"Hei {members.First().Id.ToSlackMention()}! Hva jobber du med i dag? 🖨",
-                    Reminder = "Eller har du fri?"
+                async () => {
+                    var workEmojies = new []{ ":floppy_disk:", ":printer:", ":chart_with_upwards_trend:", ":briefcase:"};
+                    return new Chat{ Question = $"Hei {members.First().Id.ToSlackMention()}! Hva jobber du med i dag? {workEmojies[new Random().Next(0,workEmojies.Length)]}"};
                 },
-                async () => new Chat{ Question = $"God dag {members.First().Id.ToSlackMention()}! Gjør du noe gøy akkurat nå? :bowling:"},
+                async () => {
+                    var funEmojies = new []{ ":bowling:", ":video_game:", ":ice_skate:", ":woman-surfing:"};
+                    return new Chat{ Question = $"God dag {members.First().Id.ToSlackMention()}! Gjør du noe gøy akkurat nå? {funEmojies[new Random().Next(0,funEmojies.Length)]}"};
+                },
                 async () => new Chat{ Question = $"Hallo {members.First().Id.ToSlackMention()}! Hva skjer? :what: :up:"},
                 async () =>
                 {
@@ -227,8 +230,7 @@ namespace Nysgjerrig
                 // cv 
                 // forecast + navn
 
-                // REPLIES - if other replies react, else message
-                // https://api.slack.com/methods/reactions.add
+                // REPLIES - if other replies  react, else message
             };
         }
 

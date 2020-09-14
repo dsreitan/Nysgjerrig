@@ -41,12 +41,8 @@ namespace Nysgjerrig
             }
 
             //TODO: Find a way to fetch the previous question to send an appropriate answer/reminder
-
             //var fakeMembers = new List<ChatMember> { new ChatMember { Id = ""} };
-
             //var chats = GetChats(fakeMembers);
-
-
             //await SendMessage(selectedChat, commandRequest);
 
             /*
