@@ -2,44 +2,72 @@
 using Microsoft.Extensions.Logging;
 using System;
 using System.Net.Http;
+using System.Threading.Tasks;
 
 namespace Nysgjerrig
 {
     public class SlackCronJobs
     {
-        private readonly Uri _queryNextPersonUri;
-        private readonly Uri _queryFollowup;
+        private readonly string _queryNextUrl;
+        private readonly string _queryFollowupUrl;
 
         public SlackCronJobs()
         {
-            var queryNextPersonEndpoint = Environment.GetEnvironmentVariable("QueryNextPersonEndpoint");
-            var queryFollowupEndpoint = Environment.GetEnvironmentVariable("QueryFollowupEndpoint");
+            _queryNextUrl = Environment.GetEnvironmentVariable("QueryNextEndpoint");
+            _queryFollowupUrl = Environment.GetEnvironmentVariable("QueryFollowupEndpoint");
 
-            if (string.IsNullOrWhiteSpace(queryNextPersonEndpoint)) throw new ArgumentException("***QueryNextPersonEndpoint not set***");
-            if (string.IsNullOrWhiteSpace(queryFollowupEndpoint)) throw new ArgumentException("***QueryFollowupEndpoint not set***");
-
-            _queryNextPersonUri = new Uri(queryNextPersonEndpoint);
-            _queryFollowup = new Uri(queryFollowupEndpoint);
+            if (string.IsNullOrWhiteSpace(_queryNextUrl)) throw new ArgumentException("***QueryNextEndpoint not set***");
+            if (string.IsNullOrWhiteSpace(_queryFollowupUrl)) throw new ArgumentException("***QueryFollowupEndpoint not set***");
         }
 
-        [FunctionName("TriggerNextPerson")]
-        public void TriggerNextPerson([TimerTrigger("0 0 11 * * 1-5")] TimerInfo myTimer, ILogger log)
+        [FunctionName("TriggerNext")]
+        public async Task TriggerNext([TimerTrigger("0 0 11 * * 1-5")] TimerInfo myTimer, ILogger log)
         {
-            log.LogInformation($"{nameof(TriggerNextPerson)} fired: {DateTime.Now}");
+            log.LogInformation($"{nameof(TriggerNext)} fired: {DateTime.Now}");
 
-            using var client = new HttpClient();
-
-            client.GetAsync(_queryNextPersonUri);
+            try
+            {
+                using var client = new HttpClient();
+                var response = await client.GetAsync(_queryNextUrl);
+                if (response.IsSuccessStatusCode)
+                {
+                    log.LogInformation($"{nameof(TriggerNext)} OK {await response.Content.ReadAsStringAsync()}");
+                }
+                else
+                {
+                    log.LogWarning($"{nameof(TriggerNext)} FAILED {response.ReasonPhrase}");
+                }
+            }
+            catch (Exception ex)
+            {
+                log.LogError(ex.Message, ex);
+                throw;
+            }
         }
 
         [FunctionName("TriggerFollowup")]
-        public void TriggerFollowup([TimerTrigger("0 15 11 * * 1-5")] TimerInfo myTimer, ILogger log)
+        public async Task TriggerFollowup([TimerTrigger("0 15 11 * * 1-5")] TimerInfo myTimer, ILogger log)
         {
             log.LogInformation($"{nameof(TriggerFollowup)} fired: {DateTime.Now}");
 
-            using var client = new HttpClient();
-
-            client.GetAsync(_queryFollowup);
+            try
+            {
+                using var client = new HttpClient();
+                var response = await client.GetAsync(_queryFollowupUrl);
+                if (response.IsSuccessStatusCode)
+                {
+                    log.LogInformation($"{nameof(TriggerFollowup)} OK {await response.Content.ReadAsStringAsync()}");
+                }
+                else
+                {
+                    log.LogWarning($"{nameof(TriggerFollowup)} FAILED {response.ReasonPhrase}");
+                }
+            }
+            catch (Exception ex)
+            {
+                log.LogError(ex.Message, ex);
+                throw;
+            }
         }
     }
 }
