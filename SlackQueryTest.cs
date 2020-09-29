@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace Nysgjerrig
 {
-    class SlackQuestTest : SlackBase
+    class SlackQueryTest : SlackBase
     {
         [FunctionName("Test")]
         public async Task<IActionResult> Test([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)] HttpRequest req, ILogger log)

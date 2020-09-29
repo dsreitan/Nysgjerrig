@@ -1,4 +1,4 @@
-﻿using Microsoft.Toolkit.Parsers.Rss;
+using Microsoft.Toolkit.Parsers.Rss;
 using Newtonsoft.Json;
 using Nysgjerrig.Models;
 using System;
@@ -158,25 +158,22 @@ namespace Nysgjerrig
                 async () => new Chat{ Question = $"Hallo {members.First().Id.ToSlackMention()}! Hva skjer? :what: :up:"},
                 async () =>
                 {
-                    var mostMentionedUser = await GetSlackUserInfo(members.Last().Id);
-                    string mostMentionedUserName;
-                    if (string.IsNullOrWhiteSpace(mostMentionedUser?.Name))
-                    {
-                        mostMentionedUserName = members.Last().Id.ToSlackMention();
-                    }
-                    else
-                    {
-                        var capitalized = mostMentionedUser.Name.First().ToString().ToUpper() + mostMentionedUser.Name.Substring(1);
-                        mostMentionedUserName = capitalized.Contains(".") ? capitalized.Split(".")[0] : capitalized;
-                    }
-
                     var leastMentionedUserId = members.First().Id;
 
-                    return new Chat{ Question = $"Nå har det vært mye fra {mostMentionedUserName} her! Jeg vil heller høre hva du driver med {leastMentionedUserId.ToSlackMention()} ☺"};
+                    var question = $"Hva driver du med {leastMentionedUserId.ToSlackMention()}? ☺";
+
+                    var mostMentionedUser = await GetSlackUserInfo(members.Last().Id);
+                    if (mostMentionedUser?.Name != null)
+                    {
+                        var mostMentionedUserName = mostMentionedUser.Name.Split(".")[0].Capitalize();
+                        question = $"Nå har jeg plaga {mostMentionedUserName} nok! " + question;
+                    }
+
+                    return new Chat { Question = question};
                 },
                 async () =>
                 {
-                    var question = $"Kjeder du deg {members.First().Id.ToSlackMention()}?";
+                    var question = $"Fortell oss hva du jobber med {members.First().Id.ToSlackMention()}!";
                     var feed = await HttpClient.GetStringAsync("https://www.kode24.no/?lab_viewport=rss");
                     if (feed != null)
                     {
@@ -185,43 +182,53 @@ namespace Nysgjerrig
                         var latestPostUrl = rss.First()?.FeedUrl?.Replace("\n", "").Trim();
                         if (latestPostUrl != null)
                         {
-                            question += $" Sjekk ut {latestPostUrl.ToSlackUrl("siste nytt på kode24")}!";
+                            question += $" Etterpå kan du jo sjekke {latestPostUrl.ToSlackUrl("siste nytt på kode24")} :moonwalk-parrot:";
                         }
                     }
 
-                    return new Chat{ Question = question};
+                    return new Chat { Question = question};
                 },
-                async () => new Chat{ Question = $"Har det blitt noe {"CRJ7QDS90".ToSlackChannel()} i det siste {members.First().Id.ToSlackMention()}? :microphone:"},
+                // CRJ7QDS90 == #karaoke channel
+                async () => new Chat { Question = $"Har det blitt noe {"CRJ7QDS90".ToSlackChannel()} i det siste {members.First().Id.ToSlackMention()}? :microphone: Eller noe annet som skjer?"},
                 async () =>
                 {
-                    var question = $"Er det fint vær hos deg {members.First().Id.ToSlackMention()}?";
+                    var question = $"Kompilerer ikke koden {members.First().Id.ToSlackMention()}? Du kan jo lufte problemet her";
 
-                    var officeLocations = new Dictionary<string, string>
+                    try
                     {
-                        {"Oslo", "lat=59.91273&lon=10.74609" },
-                        {"Eidsvoll", "lat=60.33045&lon=11.26161" },
-                        {"Ulsteinvik", "lat=62.34316&lon=5.84867" },
-                        {"Karmøy", "lat=59.28354&lon=5.30671" },
-                        {"København", "lat=55.67594&lon=12.56553" },
-                        {"Trysil", "lat=61.31485&lon=12.2637" },
-                    };
+                        var officeLocations = new Dictionary<string, string>
+                        {
+                            {"Oslo", "lat=59.91273&lon=10.74609" },
+                            {"Eidsvoll", "lat=60.33045&lon=11.26161" },
+                            {"Ulsteinvik", "lat=62.34316&lon=5.84867" },
+                            {"Karmøy", "lat=59.28354&lon=5.30671" },
+                            {"København", "lat=55.67594&lon=12.56553" },
+                            {"Trysil", "lat=61.31485&lon=12.2637" },
+                        };
 
-                    var selectedOffice = officeLocations.ElementAt(new Random().Next(0, officeLocations.Count));
+                        var randomOffice = officeLocations.ElementAt(new Random().Next(0, officeLocations.Count));
 
-                    using var client = new HttpClient();
-                    client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("min-slack-integrasjon", "0.0.1"));
+                        using var client = new HttpClient();
+                        client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("min-slack-integrasjon", "0.0.1"));
 
-                    var url = "https://api.met.no/weatherapi/locationforecast/2.0/compact.json?" + selectedOffice.Value;
-                    var weatherResponse = await client.GetAsync(url);
-                    var weatherData = await weatherResponse.Content.ReadAsStringAsync();
-                    var weatherJson = JsonConvert.DeserializeObject<dynamic>(weatherData);
-                    if (weatherJson != null)
-                    {
-                        question += $" Her på {selectedOffice.Key}-kontoret er det {GetWeatherDescription(weatherJson)}";
+                        var url = "https://api.met.no/weatherapi/locationforecast/2.0/compact.json?" + randomOffice.Value;
+                        var weatherResponse = await client.GetAsync(url);
+                        var weatherData = await weatherResponse.Content.ReadAsStringAsync();
+                        var weatherJson = JsonConvert.DeserializeObject<dynamic>(weatherData);
+                        if (weatherJson != null)
+                        {
+                            question += $" eller lufte hjernen ute! Her på {randomOffice.Key}-kontoret er det {GetWeatherDescription(weatherJson)}";
+                        }
                     }
+                    catch (Exception)
+                    {
+                        question += " :male-technologist:";
+                    }
+
 
                     return new Chat{ Question = question};
                 },
+                async () => new Chat{ Question = $"Sitter du fast i et problem {members.First().Id.ToSlackMention()}? La oss hjelpe deg! :rubber_duck:"},
 
                 // TODO
                 
