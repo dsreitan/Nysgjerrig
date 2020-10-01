@@ -204,6 +204,7 @@ namespace Nysgjerrig
                             {"Karmøy", "lat=59.28354&lon=5.30671" },
                             {"København", "lat=55.67594&lon=12.56553" },
                             {"Trysil", "lat=61.31485&lon=12.2637" },
+                            {"Fredrikstad", "lat=59.2263353&lon=10.8800742" },
                         };
 
                         var randomOffice = officeLocations.ElementAt(new Random().Next(0, officeLocations.Count));
